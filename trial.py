@@ -24,13 +24,30 @@ df = df[['DriverNumber', 'TrackStatus', 'Compound', 'TyreLife', 'FreshTyre', 'La
 # PREPROCESSING
 df['TyreLife'] = df['TyreLife'].fillna(0)
 
-#unknown tyre compounds to be updated with the next lap's compound info, if not available, check next one
-
 #0: soft, 1: medium, 2: hard, 3: inter, 4: wet
 df['Compound'] = df['Compound'].replace({'SOFT': 0, 'MEDIUM': 1, 'HARD': 2, 'INTERMEDIATE': 3, 'WET': 4})
 
 #0: not fresh, 1: fresh
 df['FreshTyre'] = df['FreshTyre'].replace({True: 1, False: 0}) # to use or not to use?
+
+def find_compound(row):
+    driver = row['DriverNumber']
+    lap = row['LapNumber'] + 1
+    compound = df.loc[(df['DriverNumber'] == driver) & (df['LapNumber'] == lap)]['Compound'].iloc[0]
+    if not compound == 'UNKNOWN':
+        return compound
+    else:
+        new_row = row.copy()
+        new_row['LapNumber'] += 1
+        return find_compound(new_row)
+
+#unknown tyre compounds to be updated with the next lap's compound info, if not available, check next one
+unknowns = df[df['Compound'] == 'UNKNOWN']
+for index, unknown in unknowns.iterrows():
+    driver = unknown['DriverNumber']
+    lap = unknown['LapNumber']
+    compound = find_compound(unknown)
+    df['Compound'].iloc[index] = compound
 
 #what to do for stints?
 #pitin-pitout-laptime nans?
